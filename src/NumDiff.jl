@@ -29,7 +29,7 @@ function euler!(X::Array,V::Array,T::Array)
         V : Array{n-1,n} : Computed velocity from the time series.
         T : Array{n-1,n} : This denotes the time step between measurements.
     """
-    V .= (X[2:end,:] .- X[1:end-1,:]) ./ T
+    V = (X[2:end] .- X[1:end-1]) ./ T
 end
 
 function polynomial!(X::Array,V::Array)
