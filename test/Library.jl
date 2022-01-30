@@ -2,6 +2,25 @@ using Test
 using BenchmarkTools
 include("../src/Library.jl")
 
+@testset "n2terms" begin
+    function n2(p::Int)
+        if p==1
+            return 1
+        elseif p>1
+            r = [1]
+            for i = 2:p
+                append!(r,r[i-1]+i)
+            end
+            return r[end]
+        end
+    end
+
+    x = [1,2,3,4,5,6]
+    r = [n2(k) for k in x]
+    q = [n2_terms(k) for k in x]
+    @test r == q
+end
+
 @testset "linear" begin
     x = rand(3,3)
     @test x == linear(x)
@@ -31,7 +50,7 @@ end
 end
 
 @testset "cubic" begin
-    
+
 end
 
 @testset "transcedental" begin

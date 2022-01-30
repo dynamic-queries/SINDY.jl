@@ -5,16 +5,8 @@ function linear(X::Array)
     return X
 end
 
-function n_terms(p::Int)
-    if p==1
-        return 1
-    elseif p>1
-        r = [1]
-        for i = 2:p
-            append!(r,r[i-1]+i)
-        end
-        return r[end]
-    end
+function n2_terms(p::Int)
+    return p*(p+1)/2
 end
 
 function quadratic(X::Array)
@@ -35,19 +27,34 @@ function quadratic(X::Array)
     reshape(C,(s,n))
 end
 
+function n3_terms(p::Int)
+
+end
 
 function cubic(X::Array)
 
 end
 
 function transcedental(X::Array)
-
+    s = size(X)
+    p = s[2]
+    s = s[1]
+    C = []
+    for i = 1:p
+        append!(C,sin.(X[:,i]))
+        append!(C,cos.(X[:,i]))
+        append!(C,tan.(X[:,i]))
+    end
+    return reshape(C,(s,3*p))
+    # We cannot include e^{ix} since this makes the equation inhomogenous.
 end
 
+##TODO: Implement later
 function bessel(X::Array)
 
 end
 
+##TODO: Implement later
 function airy(X::Array)
 
 end
