@@ -5,19 +5,36 @@ function linear(X::Array)
     return X
 end
 
+function n_terms(p::Int)
+    if p==1
+        return 1
+    elseif p>1
+        r = [1]
+        for i = 2:p
+            append!(r,r[i-1]+i)
+        end
+        return r[end]
+    end
+end
+
 function quadratic(X::Array)
     """
         Assume data is passed in the form x,y,z
         Solve this issue for an array of arbitrary size.
     """
-    c1 = X[:,1].^2
-    c2 = X[:,2].^2
-    c3 = X[:,3].^2
-    c4 = X[:,1].*X[:,2]
-    c5 = X[:,1].*X[:,3]
-    c6 = X[:,2].*X[:,3]
-    return [c1 c2 c3 c4 c5 c6]
+    s = size(X)
+    p = s[2]
+    s = s[1]
+    n = n_terms(p)
+    C = []
+    for i=1:p
+        for j=i:p
+            append!(C,X[:,i].*X[:,j])
+        end
+    end
+    reshape(C,(s,n))
 end
+
 
 function cubic(X::Array)
 
