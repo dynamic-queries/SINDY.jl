@@ -17,7 +17,7 @@ function quadratic(X::Array)
     s = size(X)
     p = s[2]
     s = s[1]
-    n = n_terms(p)
+    n = n2_terms(p)
     C = []
     for i=1:p
         for j=i:p
@@ -81,5 +81,5 @@ tsteps
         - Airy
         - Combinations of specific ones
     """
-
+    
 end
