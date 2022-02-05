@@ -1,11 +1,17 @@
 using DifferentialEquations
 using DataInterpolations
 using Plots
-using ForwardDiff
-using FiniteDiff
+using LinearAlgebra
 
 #===============================================================#
-function datagen()
+abstract type DynamicalSystem end
+
+struct LorenzSystem <: DynamicalSystem end
+struct LotkaVolterra <: DynamicalSystem end
+struct NSECyclinder <: DynamicalSystem end
+struct HelicopterData <: DynamicalSystem end
+
+function datagen(data::LorenzSystem)
     function noise(u)
         for i = 1:length(u)
             for j = 1:length(u[i])
@@ -106,7 +112,26 @@ function basis(X)
     return θ
 end
 #===============================================================#
-function _optimize(θ,v,λ)
+abstract type AbstractOptimizer end
+
+struct LSTSQ <: AbstractOptimizer
+    abstol::Float64
+    LSTSQ() = new(1e-16)
+end
+
+struct STLSQ <: AbstractOptimizer
+    abstol::Float64
+    λ::Float64
+    STLSQ(thres::Float64) = new(1e-16,thres)
+end
+
+function _optimize(θ,v,opt::LSTSQ)
+    θ = permutedims(basis(X),(2,1))
+    v= permutedims(munge(v))
+    return θ\v
+end
+
+function _optimize(θ,v,opt::STLSQ)
 
 end
 #===============================================================#
@@ -115,7 +140,8 @@ end
 sol = datagen()
 denoise!(sol)
 v = differentiate(sol)
-
 X = munge(sol.u)
 θ = basis(X)
-ξ = _optimize(θ,v,0.1)
+
+opt = LSTSQ()
+ξ = _optimize(θ,v,opt)
