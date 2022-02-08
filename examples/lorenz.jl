@@ -8,7 +8,7 @@ abstract type DynamicalSystem end
 
 struct LorenzSystem <: DynamicalSystem end
 struct LotkaVolterra <: DynamicalSystem end
-struct NSECyclinder <: DynamicalSystem end
+struct NSECylinder <: DynamicalSystem end
 struct HelicopterData <: DynamicalSystem end
 
 function datagen(data::LorenzSystem)
@@ -126,22 +126,64 @@ struct STLSQ <: AbstractOptimizer
 end
 
 function _optimize(θ,v,opt::LSTSQ)
-    θ = permutedims(basis(X),(2,1))
-    v= permutedims(munge(v))
+    θ = permutedims(θ,(2,1))
+    v = permutedims(munge(v))
     return θ\v
 end
 
 function _optimize(θ,v,opt::STLSQ)
+    iter = 0
+    tol = opt.abstol
+    λ = opt.λ
+    ξ = θ\v
+    lower .= ξ .> λ
+    @. greater = !ξ
 
 end
 #===============================================================#
 # Main function
 
-sol = datagen()
+obj_lorenz = LorenzSystem()
+sol = datagen(obj_lorenz)
 denoise!(sol)
 v = differentiate(sol)
 X = munge(sol.u)
 θ = basis(X)
 
-opt = LSTSQ()
-ξ = _optimize(θ,v,opt)
+# opt = LSTSQ()
+# ξ = _optimize(θ,v,opt)
+#
+opt = STLSQ(0.1)
+iter = 0
+abstol = 1e-8
+θ = permutedims(θ,(2,1))
+v = permutedims(munge(v))
+maxiter = maximum(collect(size(θ)))
+convlimit = abstol # Is the limit on the difference betweem two iterations.
+conv = Inf
+λ = opt.λ
+ξ = θ\v
+smallnums = abs.(ξ) .< λ
+bignums = @. !smallnums[:,1]
+x = similar(ξ)
+
+for i = 1:1000
+    y = similar(ξ) # Iteration level least square estimate.
+    ξ[smallnums] .= 0
+    # θ[:,bignums] * ξ[bignums,i] = v[:,i]
+    for i = 1:size(v,2)
+        bignums .= @. !smallnums[:,i]
+        ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
+    end
+    smallnums .= abs.(ξ) .< λ
+    conv = LinearAlgebra.norm2(y - ξ)
+    display(conv)
+end
+
+
+ξ
+
+# Least square
+# Successively perform least squares on those data whose x is greater than the threshold.
+# Perform the same for a number of iterations : The number of iterations has to be propotional to the max size of the matrix.
+#===============================================================#
