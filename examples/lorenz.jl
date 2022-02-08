@@ -29,8 +29,8 @@ function datagen(data::LorenzSystem)
 
     u₀ = [1,0,0]
     p = [10,12,8/3] # Change d_lorenz
-    tspan = (0,10)
-    t = 0:0.01:10
+    tspan = (0,100)
+    t = 0:0.01:100
     prob = ODEProblem(lorenz!,u₀,tspan,p)
     sol = solve(prob,Tsit5(),saveat=t)
     # noisy = noise(sol.u)
@@ -96,16 +96,11 @@ function differentiate(sol,ds::LorenzSystem,o::AnalyticalDeriv)
     for i = 1:length(sol.u)
         append!(deriv,lorenz(sol.u[i]))
     end
-    deriv = reshape(deriv,(3,1001))
+    deriv = reshape(deriv,(3,length(sol.u)))
     fig = plot(deriv[1,:],deriv[2,:],deriv[3,:])
     display(fig)
     return deriv
 end
-
-function error_in_derivative(sol)
-
-end
-e
 
 #===============================================================#
 function n2_terms(p::Int)
@@ -130,6 +125,30 @@ function quadratic(X::Array)
     reshape(C,(n,s))
 end
 
+function cubic(X::Array)
+    """
+        Assume data is passed in the form x,y,z
+        Solve this issue for an array of arbitrary size.
+    """
+    s = size(X) # 3,1001
+    p = s[1]
+    s = s[2]
+    n = n2_terms(p) # 6
+    C = []
+    for i=1:p
+        for j=i:p
+            for k = j:p
+                append!(C,X[i,:].*X[j,:] .* X[k,:])
+            end
+        end
+    end
+    # return C
+    reshape(C,(10,s))
+end
+
+
+
+
 function linear(X::Array)
     """
         Assuming that the data passed is linear.
@@ -142,14 +161,19 @@ function basis(X)
     ntsteps = s[2]
     nparams = s[1]
     # Since we consider unit, linear and quadratic terms.
-    n = 1 + 3 + n2_terms(nparams) # You are better than this!
+    n = 1 + 3 + n2_terms(nparams) + 10 # You are better than this!
     θ = zeros(n,ntsteps)
-
     θ[1,:] = ones(ntsteps)
     θ[2:4,:] = linear(X)
-    θ[5:end,:] = quadratic(X)
+    θ[5:10,:] = quadratic(X)
+    θ[11:end,:] = cubic(X)
     return θ
 end
+
+
+# X = rand(3,1000)
+# cubic(X)
+# basis(X)
 #===============================================================#
 abstract type AbstractOptimizer end
 
@@ -192,7 +216,7 @@ function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::STLSQ) where T
     bignums = @. !smallnums[:,1]
     x = similar(ξ)
 
-    for i = 1:1000
+    for i = 1:maxiter
         y = similar(ξ) # Iteration level least square estimate.
         ξ[smallnums] .= 0
         # θ[:,bignums] * ξ[bignums,i] = v[:,i]
@@ -216,21 +240,23 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
     maxiter = maximum(collect(size(θ)))
     convlimit = abstol # Is the limit on the difference betweem two iterations.
     conv = Inf
+
     λ = opt.λ
     ξ = θ\v
     smallnums = abs.(ξ) .< λ
     bignums = @. !smallnums[:,1]
     x = similar(ξ)
 
-    for i = 1:1000
+    for i = 1:maxiter
+        smallnums .= abs.(ξ) .< λ
+        bignums .= @. !smallnums[:,1]
         y = similar(ξ) # Iteration level least square estimate.
         ξ[smallnums] .= 0
         # θ[:,bignums] * ξ[bignums,i] = v[:,i]
-        for i = 1:size(v,2)
+        for i = 1:3
             bignums .= @. !smallnums[:,i]
             ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
         end
-        smallnums .= abs.(ξ) .< λ
         conv = LinearAlgebra.norm2(y - ξ)
         display(conv)
     end
@@ -238,6 +264,16 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
     return ξ
 end
 #===============================================================#
+function _remake(ξ,ds::LorenzSystem)
+
+    function make(du,u,p,t)
+
+    end
+end
+
+
+#===============================================================#
+
 # Main function
 
 # Trail 1 : TVD Derivative functions
@@ -275,10 +311,34 @@ function trail3()
     denoise!(sol)
     diff = AnalyticalDeriv()
     d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
+    # diff = TotalVariationalDerivativative()
+    # d = differentiate(sol,diff)
     X = munge(sol.u)
     θ = basis(X)
-    opt = STLSQ(0.001)
+    opt = STLSQ(0.025)
     ξ = _optimize(θ,d,opt)
+    display(ξ)
+    return ξ
 end
 
 # Conclusion : The optimizer needs work.
+ξ = trail3()
+
+function lremade!(du,u,p,t)
+    du[1] = -10*u[1] + 10*u[2]
+    du[2] = 15.53 - 15.86*u[1] + 11.26*u[2] + 0.84*u[3]
+    du[3] = -15.63 + 6.99*u[1] + 3.63*u[2] - 3.799*u[3]
+end
+
+p = [10,12,8/3]
+u₀ = [1,0,0]
+tspan = (0,100)
+t = 0:0.01:100
+remade =  ODEProblem(lremade!,u₀,tspan,p)
+sol1 = solve(remade,Tsit5(),saveat=t)
+plot(sol1,vars=(1,2,3))
+savefig("./examples/Learned.png")
+
+obj = LorenzSystem()
+sol = datagen(obj)
+savefig("./examples/Original.png")
