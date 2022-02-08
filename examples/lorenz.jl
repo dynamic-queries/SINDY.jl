@@ -28,9 +28,9 @@ function datagen(data::LorenzSystem)
     end
 
     u₀ = [1,0,0]
-    p = [10,12,8/3] # Change d_lorenz
+    p = [10,28,8/3] # Change d_lorenz
     tspan = (0,100)
-    t = 0:0.01:100
+    t = 0.01:0.01:100
     prob = ODEProblem(lorenz!,u₀,tspan,p)
     sol = solve(prob,Tsit5(),saveat=t)
     # noisy = noise(sol.u)
@@ -253,7 +253,7 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
         y = similar(ξ) # Iteration level least square estimate.
         ξ[smallnums] .= 0
         # θ[:,bignums] * ξ[bignums,i] = v[:,i]
-        for i = 1:3
+        for i = 1:size(v,2)
             bignums .= @. !smallnums[:,i]
             ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
         end
@@ -309,21 +309,23 @@ function trail3()
     obj_lorenz = LorenzSystem()
     sol = datagen(obj_lorenz)
     denoise!(sol)
-    diff = AnalyticalDeriv()
-    d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
-    # diff = TotalVariationalDerivativative()
-    # d = differentiate(sol,diff)
+    # diff = AnalyticalDeriv()
+    # d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
+    diff = TotalVariationalDerivativative()
+    d = differentiate(sol,diff)
     X = munge(sol.u)
     θ = basis(X)
-    opt = STLSQ(0.025)
+    display(LinearAlgebra.cond(θ))
+    opt = STLSQ(0.25)
     ξ = _optimize(θ,d,opt)
     display(ξ)
-    return ξ
+    return θ,ξ
 end
 
 # Conclusion : The optimizer needs work.
 ξ = trail3()
 
+LinearAlgebra.cond(ξ[1])
 function lremade!(du,u,p,t)
     du[1] = -10*u[1] + 10*u[2]
     du[2] = 15.53 - 15.86*u[1] + 11.26*u[2] + 0.84*u[3]
