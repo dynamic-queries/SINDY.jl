@@ -241,37 +241,44 @@ end
 # Main function
 
 # Trail 1 : TVD Derivative functions
-obj_lorenz = LorenzSystem()
-sol = datagen(obj_lorenz)
-denoise!(sol)
-diff = TotalVariationalDerivativative()
-v = differentiate(sol,diff)
-X = munge(sol.u)
-θ = basis(X)
-opt = LSTSQ()
-ξ = _optimize(θ,v,opt)
-
+function trail1()
+    obj_lorenz = LorenzSystem()
+    sol = datagen(obj_lorenz)
+    denoise!(sol)
+    diff = TotalVariationalDerivativative()
+    v = differentiate(sol,diff)
+    X = munge(sol.u)
+    θ = basis(X)
+    opt = LSTSQ()
+    ξ = _optimize(θ,v,opt)
+end
 
 
 # Trail 2 : Finite Diff Derivative
-obj_lorenz = LorenzSystem()
-sol = datagen(obj_lorenz)
-denoise!(sol)
-diff = FiniteDiff()
-w = differentiate(sol,diff)
-X = munge(sol.u)[:,2:1001]
-θ = basis(X)
-opt = LSTSQ()
-ξ = _optimize(θ,w,opt)
+function trail2()
+    obj_lorenz = LorenzSystem()
+    sol = datagen(obj_lorenz)
+    denoise!(sol)
+    diff = FiniteDiff()
+    w = differentiate(sol,diff)
+    X = munge(sol.u)[:,2:1001]
+    θ = basis(X)
+    opt = LSTSQ()
+    ξ = _optimize(θ,w,opt)
+end
 
 
-# Trail 3 : AnalyticalDeriv
-obj_lorenz = LorenzSystem()
-sol = datagen(obj_lorenz)
-denoise!(sol)
-diff = AnalyticalDeriv()
-d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
-X = munge(sol.u)
-θ = basis(X)
-opt = STLSQ(0.001)
-ξ = _optimize(θ,d,opt)
+# Trail 3 : AnalyticalDeriv and the STLSQ optimizer.
+function trail3()
+    obj_lorenz = LorenzSystem()
+    sol = datagen(obj_lorenz)
+    denoise!(sol)
+    diff = AnalyticalDeriv()
+    d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
+    X = munge(sol.u)
+    θ = basis(X)
+    opt = STLSQ(0.001)
+    ξ = _optimize(θ,d,opt)
+end
+
+# Conclusion : The optimizer needs work.
