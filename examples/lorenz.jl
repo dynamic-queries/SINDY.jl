@@ -322,10 +322,11 @@ function trail3()
     return θ,ξ
 end
 
-# Conclusion : The optimizer needs work.
-ξ = trail3()
+# Conclusion : Optimizer works!!
+θ,ξ = trail3()
 
-LinearAlgebra.cond(ξ[1])
+ξ
+LinearAlgebra.cond(θ)
 function lremade!(du,u,p,t)
     du[1] = -10*u[1] + 10*u[2]
     du[2] = 15.53 - 15.86*u[1] + 11.26*u[2] + 0.84*u[3]

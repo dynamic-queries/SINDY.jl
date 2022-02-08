@@ -1,67 +1,42 @@
-using ForwardDiff
-using DataInterpolations
+abstract type AbstractDiff  end
 
-@enum DiffType begin
-    euler = 1
-    polynomial = 2 # This is also called Principal Derivative Analysis. See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2631937/
-    TVR = 3 # Total variational regularization
-    # Include collaction here as well.
+struct AnalyticalDeriv <: AbstractDiff end
+struct FiniteDiff <: AbstractDiff end
+struct TotalVariationalDerivativative <: AbstractDiff end
+
+function differentiate(sol,o::TotalVariationalDerivativative)
+    # interp = LagrangeInterpolation(munge(sol.u),sol.t)
+    interp = QuadraticInterpolation(munge(sol.u),sol.t)
+    y_reconstruct = interp.(sol.t)
+    v = [DataInterpolations.derivative(interp,k) for k in sol.t]
+    temp = munge(v)
+    display(plot(temp[1,:],temp[2,:],temp[3,:]))
+    return v
 end
 
-# This is the main function that dispatches the other functions based on the required algorithm. This is not the Julianic way of doing things.
-#TODO : Implement types for each of the algorithm in order to exploit the multiple dispatch functionality of Julia.
-#-------------------------------------------------------------------------------------------------
-function gradient!(X::Array,V::Array,T::Array,kind::DiffType)
-    if kind == euler
-        euler!(X,V,T)
-    elseif kind == polynomial
-        polynomial!(X,V)
-    elseif kind == TVR
-        TVR!(X,V,T)
+
+function differentiate(sol,o::FiniteDiff)
+    q = sol.u[2:end] .- sol.u[1:end-1]
+    q = q./(sol.t[2] - sol.t[1])
+    w = munge(q)
+    fig = plot(w[1,:],w[2,:],w[3,:])
+    display(fig)
+    return w
+end
+
+function differentiate(sol,ds::LorenzSystem,o::AnalyticalDeriv)
+    function lorenz(u) # Modify when changing parameters
+        u1 = 10*(u[2] - u[1])
+        u2 = u[1]*(12 - u[3]) - u[2]
+        u3 = u[1]*u[2] - 8/3 * u[3]
+        return [u1 u2 u3]
     end
-end
-#-------------------------------------------------------------------------------------------------
-
-# Collection of all algorithms.
-#-------------------------------------------------------------------------------------------------
-function euler!(X::Array,V::Array,T::Array)
-    """
-        X : Array{n,n}   : Samples from the time series.
-        V : Array{n-1,n} : Computed velocity from the time series.
-        T : Array{1,n} : This denotes the time step between measurements.
-    """
-    dT = T[2:end] /- T[1:end-1]
-    V = (X[2:end] .- X[1:end-1]) ./ dT ###TODO : Modify the tests appropriately.
-end
-
-
-##TODO : Include tests for polynomial approximation.
-function polynomial!(X::Array,V::Array,T::Array)
-    """
-        - We approximate each component of x using a Lagrangian Interpolator
-        - We maintain a list of interpolation objects for each significant dimension of the data.
-        - Lagrangian Interpolation maybe unstable for some data.
-        - The grid is regularly sampled => Runge Effect
-        - Alternative is to embedd the regular grid on a Chebyshev grid. ?? How would one even do that!
-    """
-    s = size(X)
-    p = s[2]
-    s = s[1]
-    Interps = []
-    for i = 1:p
-        intrep = DataInterpolations.LagrangianInterpolation(X[:,i],T)
-        push!(Interps,intrep)
+    deriv = []
+    for i = 1:length(sol.u)
+        append!(deriv,lorenz(sol.u[i]))
     end
-
-    X_denoised = similar(X)
-    for i = 1:p
-        X_denoised[:,i] = Intreps[i].(T)
-        V[:,i] = Interps[i].derivative.(T)
-    end
-    return X_denoised,V
+    deriv = reshape(deriv,(3,length(sol.u)))
+    fig = plot(deriv[1,:],deriv[2,:],deriv[3,:])
+    display(fig)
+    return deriv
 end
-
-function TVR!(X::Array,V::Array)
-
-end
-#-------------------------------------------------------------------------------------------------

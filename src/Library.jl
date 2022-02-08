@@ -1,12 +1,5 @@
-function linear(X::Array)
-    """
-        Assuming that the data passed is linear.
-    """
-    return X
-end
-
 function n2_terms(p::Int)
-    return p*(p+1)/2
+    return Int(p*(p+1)/2)
 end
 
 function quadratic(X::Array)
@@ -14,72 +7,60 @@ function quadratic(X::Array)
         Assume data is passed in the form x,y,z
         Solve this issue for an array of arbitrary size.
     """
-    s = size(X)
-    p = s[2]
-    s = s[1]
-    n = n2_terms(p)
+    s = size(X) # 3,1001
+    p = s[1]
+    s = s[2]
+    n = n2_terms(p) # 6
     C = []
     for i=1:p
         for j=i:p
-            append!(C,X[:,i].*X[:,j])
+            append!(C,X[i,:].*X[j,:])
         end
     end
-    reshape(C,(s,n))
-end
-
-function n3_terms(p::Int)
-
+    reshape(C,(n,s))
 end
 
 function cubic(X::Array)
-
-end
-
-function transcedental(X::Array)
-    s = size(X)
-    p = s[2]
-    s = s[1]
+    """
+        Assume data is passed in the form x,y,z
+        Solve this issue for an array of arbitrary size.
+    """
+    s = size(X) # 3,1001
+    p = s[1]
+    s = s[2]
+    n = n2_terms(p) # 6
     C = []
-    for i = 1:p
-        append!(C,sin.(X[:,i]))
-        append!(C,cos.(X[:,i]))
-        append!(C,tan.(X[:,i]))
+    for i=1:p
+        for j=i:p
+            for k = j:p
+                append!(C,X[i,:].*X[j,:] .* X[k,:])
+            end
+        end
     end
-    return reshape(C,(s,3*p))
-    # We cannot include e^{ix} since this makes the equation inhomogenous.
+    # return C
+    reshape(C,(10,s))
 end
 
-##TODO: Implement later
-function bessel(X::Array)
 
-end
 
-##TODO: Implement later
-function airy(X::Array)
 
-end
-
-function library(X::Array,F::Array)
+function linear(X::Array)
     """
-    Data : Array X is of the following form.
-
-        --------> p
-        |
-        |
-        |
-tsteps
-
-        For ease of access we denote X[:,1] as x , X[:,2] as y ....
-
-    Idea :
-        - Construct a library with the kind of basis specified
-        - We need linear
-        - Quadratic in all variables
-        - Cubic
-        - Transcedental
-        - Bessel
-        - Airy
-        - Combinations of specific ones
+        Assuming that the data passed is linear.
     """
-    
+    return X
+end
+
+function basis(X)
+    s = size(X)
+    ntsteps = s[2]
+    nparams = s[1]
+    # Since we consider unit, linear and quadratic terms.
+    n = 1 + 3 + n2_terms(nparams) + 10 # You are better than this!
+    θ = zeros(n,ntsteps)
+    θ[1,:] = ones(ntsteps)
+    θ[2:4,:] = linear(X)
+    θ[5:10,:] = quadratic(X)
+    θ[11:end,:] = cubic(X)
+    return θ
 end
