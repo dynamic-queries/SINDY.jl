@@ -1,7 +1,7 @@
 using DifferentialEquations
 using DataInterpolations
 using Plots
-using LinearAlgebra
+using ForwardDiff
 
 #===============================================================#
 abstract type DynamicalSystem end
@@ -59,7 +59,13 @@ end
 
 #===============================================================#
 
-function differentiate(sol)
+abstract type AbstractDiff  end
+
+struct AnalyticalDeriv <: AbstractDiff end
+struct FiniteDiff <: AbstractDiff end
+struct TotalVariationalDerivativative <: AbstractDiff end
+
+function differentiate(sol,o::TotalVariationalDerivativative)
     # interp = LagrangeInterpolation(munge(sol.u),sol.t)
     interp = QuadraticInterpolation(munge(sol.u),sol.t)
     y_reconstruct = interp.(sol.t)
@@ -68,6 +74,38 @@ function differentiate(sol)
     display(plot(temp[1,:],temp[2,:],temp[3,:]))
     return v
 end
+
+
+function differentiate(sol,o::FiniteDiff)
+    q = sol.u[2:end] .- sol.u[1:end-1]
+    q = q./(sol.t[2] - sol.t[1])
+    w = munge(q)
+    fig = plot(w[1,:],w[2,:],w[3,:])
+    display(fig)
+    return w
+end
+
+function differentiate(sol,ds::LorenzSystem,o::AnalyticalDeriv)
+    function lorenz(u) # Modify when changing parameters
+        u1 = 10*(u[2] - u[1])
+        u2 = u[1]*(12 - u[3]) - u[2]
+        u3 = u[1]*u[2] - 8/3 * u[3]
+        return [u1 u2 u3]
+    end
+    deriv = []
+    for i = 1:length(sol.u)
+        append!(deriv,lorenz(sol.u[i]))
+    end
+    deriv = reshape(deriv,(3,1001))
+    fig = plot(deriv[1,:],deriv[2,:],deriv[3,:])
+    display(fig)
+    return deriv
+end
+
+function error_in_derivative(sol)
+
+end
+e
 
 #===============================================================#
 function n2_terms(p::Int)
@@ -106,6 +144,7 @@ function basis(X)
     # Since we consider unit, linear and quadratic terms.
     n = 1 + 3 + n2_terms(nparams) # You are better than this!
     θ = zeros(n,ntsteps)
+
     θ[1,:] = ones(ntsteps)
     θ[2:4,:] = linear(X)
     θ[5:end,:] = quadratic(X)
@@ -125,65 +164,114 @@ struct STLSQ <: AbstractOptimizer
     STLSQ(thres::Float64) = new(1e-16,thres)
 end
 
-function _optimize(θ,v,opt::LSTSQ)
+##TODO : SR3
+
+function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::LSTSQ) where T
     θ = permutedims(θ,(2,1))
     v = permutedims(munge(v))
     return θ\v
 end
 
-function _optimize(θ,v,opt::STLSQ)
+function _optimize(θ::Matrix{T},v::Matrix{T},opt::LSTSQ) where T
+    θ = permutedims(θ,(2,1))
+    v = permutedims(v)
+    return θ\v
+end
+
+function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::STLSQ) where T
     iter = 0
-    tol = opt.abstol
+    abstol = 1e-8
+    θ = permutedims(θ,(2,1))
+    v = permutedims(munge(v))
+    maxiter = maximum(collect(size(θ)))
+    convlimit = abstol # Is the limit on the difference betweem two iterations.
+    conv = Inf
     λ = opt.λ
     ξ = θ\v
-    lower .= ξ .> λ
-    @. greater = !ξ
+    smallnums = abs.(ξ) .< λ
+    bignums = @. !smallnums[:,1]
+    x = similar(ξ)
 
+    for i = 1:1000
+        y = similar(ξ) # Iteration level least square estimate.
+        ξ[smallnums] .= 0
+        # θ[:,bignums] * ξ[bignums,i] = v[:,i]
+        for i = 1:size(v,2)
+            bignums .= @. !smallnums[:,i]
+            ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
+        end
+        smallnums .= abs.(ξ) .< λ
+        conv = LinearAlgebra.norm2(y - ξ)
+        display(conv)
+    end
+    ξ[smallnums] .= 0
+    return ξ
+end
+
+function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
+    iter = 0
+    abstol = 1e-8
+    θ = permutedims(θ,(2,1))
+    v = permutedims(v)
+    maxiter = maximum(collect(size(θ)))
+    convlimit = abstol # Is the limit on the difference betweem two iterations.
+    conv = Inf
+    λ = opt.λ
+    ξ = θ\v
+    smallnums = abs.(ξ) .< λ
+    bignums = @. !smallnums[:,1]
+    x = similar(ξ)
+
+    for i = 1:1000
+        y = similar(ξ) # Iteration level least square estimate.
+        ξ[smallnums] .= 0
+        # θ[:,bignums] * ξ[bignums,i] = v[:,i]
+        for i = 1:size(v,2)
+            bignums .= @. !smallnums[:,i]
+            ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
+        end
+        smallnums .= abs.(ξ) .< λ
+        conv = LinearAlgebra.norm2(y - ξ)
+        display(conv)
+    end
+    ξ[smallnums] .= 0
+    return ξ
 end
 #===============================================================#
 # Main function
 
+# Trail 1 : TVD Derivative functions
 obj_lorenz = LorenzSystem()
 sol = datagen(obj_lorenz)
 denoise!(sol)
-v = differentiate(sol)
+diff = TotalVariationalDerivativative()
+v = differentiate(sol,diff)
 X = munge(sol.u)
 θ = basis(X)
-
-# opt = LSTSQ()
-# ξ = _optimize(θ,v,opt)
-#
-opt = STLSQ(0.1)
-iter = 0
-abstol = 1e-8
-θ = permutedims(θ,(2,1))
-v = permutedims(munge(v))
-maxiter = maximum(collect(size(θ)))
-convlimit = abstol # Is the limit on the difference betweem two iterations.
-conv = Inf
-λ = opt.λ
-ξ = θ\v
-smallnums = abs.(ξ) .< λ
-bignums = @. !smallnums[:,1]
-x = similar(ξ)
-
-for i = 1:1000
-    y = similar(ξ) # Iteration level least square estimate.
-    ξ[smallnums] .= 0
-    # θ[:,bignums] * ξ[bignums,i] = v[:,i]
-    for i = 1:size(v,2)
-        bignums .= @. !smallnums[:,i]
-        ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
-    end
-    smallnums .= abs.(ξ) .< λ
-    conv = LinearAlgebra.norm2(y - ξ)
-    display(conv)
-end
+opt = LSTSQ()
+ξ = _optimize(θ,v,opt)
 
 
-ξ
 
-# Least square
-# Successively perform least squares on those data whose x is greater than the threshold.
-# Perform the same for a number of iterations : The number of iterations has to be propotional to the max size of the matrix.
-#===============================================================#
+# Trail 2 : Finite Diff Derivative
+obj_lorenz = LorenzSystem()
+sol = datagen(obj_lorenz)
+denoise!(sol)
+diff = FiniteDiff()
+w = differentiate(sol,diff)
+X = munge(sol.u)[:,2:1001]
+θ = basis(X)
+opt = LSTSQ()
+ξ = _optimize(θ,w,opt)
+
+
+# Trail 3 : AnalyticalDeriv
+obj_lorenz = LorenzSystem()
+sol = datagen(obj_lorenz)
+denoise!(sol)
+diff = AnalyticalDeriv()
+d = Matrix{Float64}(differentiate(sol,obj_lorenz,diff))
+X = munge(sol.u)
+θ = basis(X)
+opt = STLSQ(0.001)
+ξ = _optimize(θ,d,opt)
