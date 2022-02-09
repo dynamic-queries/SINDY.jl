@@ -28,7 +28,7 @@ function datagen(data::LorenzSystem)
     end
 
     u₀ = [1,0,0]
-    p = [10,28,8/3] # Change d_lorenz
+    p = [10,12,8/3] # Change d_lorenz
     tspan = (0,100)
     t = 0.01:0.01:100
     prob = ODEProblem(lorenz!,u₀,tspan,p)
@@ -202,36 +202,6 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::LSTSQ) where T
     return θ\v
 end
 
-function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::STLSQ) where T
-    iter = 0
-    abstol = 1e-8
-    θ = permutedims(θ,(2,1))
-    v = permutedims(munge(v))
-    maxiter = maximum(collect(size(θ)))
-    convlimit = abstol # Is the limit on the difference betweem two iterations.
-    conv = Inf
-    λ = opt.λ
-    ξ = θ\v
-    smallnums = abs.(ξ) .< λ
-    bignums = @. !smallnums[:,1]
-    x = similar(ξ)
-
-    for i = 1:maxiter
-        y = similar(ξ) # Iteration level least square estimate.
-        ξ[smallnums] .= 0
-        # θ[:,bignums] * ξ[bignums,i] = v[:,i]
-        for i = 1:size(v,2)
-            bignums .= @. !smallnums[:,i]
-            ξ[bignums,i] .= θ[:,bignums] \ v[:,i]
-        end
-        smallnums .= abs.(ξ) .< λ
-        conv = LinearAlgebra.norm2(y - ξ)
-        display(conv)
-    end
-    ξ[smallnums] .= 0
-    return ξ
-end
-
 function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
     iter = 0
     abstol = 1e-8
@@ -263,7 +233,23 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::STLSQ) where T
     ξ[smallnums] .= 0
     return ξ
 end
+
+function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::STLSQ) where T
+    _optimize(θ,munge(v),opt)
+end
+
+
 #===============================================================#
+
+struct Basis
+    unit(x) = 1
+    linear(x) = x
+    square(x) = x^2
+    q_mixed(x,y) = x*y
+    cubic(x) = x^3
+    c_mix1(x,y) = x
+end
+
 function _remake(ξ,ds::LorenzSystem)
 
     function make(du,u,p,t)
@@ -316,7 +302,7 @@ function trail3()
     X = munge(sol.u)
     θ = basis(X)
     display(LinearAlgebra.cond(θ))
-    opt = STLSQ(0.25)
+    opt = STLSQ(0.05)
     ξ = _optimize(θ,d,opt)
     display(ξ)
     return θ,ξ
@@ -326,22 +312,49 @@ end
 θ,ξ = trail3()
 
 ξ
-LinearAlgebra.cond(θ)
-function lremade!(du,u,p,t)
-    du[1] = -10*u[1] + 10*u[2]
-    du[2] = 15.53 - 15.86*u[1] + 11.26*u[2] + 0.84*u[3]
-    du[3] = -15.63 + 6.99*u[1] + 3.63*u[2] - 3.799*u[3]
-end
 
-p = [10,12,8/3]
-u₀ = [1,0,0]
-tspan = (0,100)
-t = 0:0.01:100
-remade =  ODEProblem(lremade!,u₀,tspan,p)
-sol1 = solve(remade,Tsit5(),saveat=t)
-plot(sol1,vars=(1,2,3))
-savefig("./examples/Learned.png")
 
-obj = LorenzSystem()
-sol = datagen(obj)
-savefig("./examples/Original.png")
+
+
+
+
+
+
+
+
+
+LinearAlgebra.norm2(θ)
+
+#TODO: Reimplement the construction of the library function
+#   - Test based implmentation of the library function with unit tests along every step of the way.
+
+#TODO:  Automate the remake function
+#   - List of basis  functions
+#   - Every velocity vector is a linear combination of all these functions taken together.
+#   - Use lambda functions
+#   - This needs to be brute forced for the moment. Think of a better approach
+
+#TODO: Implement the sparse regressor SR3
+#   - This is a wish.
+#   - The LSTSQ might be failing, but it is hard to determine the need for a new regressor without fixing the problem of the condition number.
+
+
+# LinearAlgebra.cond(θ)
+# function lremade!(du,u,p,t)
+#     du[1] = -10*u[1] + 10*u[2]
+#     du[2] = 15.53 - 15.86*u[1] + 11.26*u[2] + 0.84*u[3]
+#     du[3] = -15.63 + 6.99*u[1] + 3.63*u[2] - 3.799*u[3]
+# end
+#
+# p = [10,12,8/3]
+# u₀ = [1,0,0]
+# tspan = (0,100)
+# t = 0:0.01:100
+# remade =  ODEProblem(lremade!,u₀,tspan,p)
+# sol1 = solve(remade,Tsit5(),saveat=t)
+# plot(sol1,vars=(1,2,3))
+# savefig("./examples/Learned.png")
+#
+# obj = LorenzSystem()
+# sol = datagen(obj)
+# savefig("./examples/Original.png")
