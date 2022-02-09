@@ -29,7 +29,7 @@ end
 function differentiate(sol,ds::LorenzSystem,o::AnalyticalDeriv)
     function lorenz(u) # Modify when changing parameters
         u1 = 10*(u[2] - u[1])
-        u2 = u[1]*(12 - u[3]) - u[2]
+        u2 = u[1]*(28 - u[3]) - u[2]
         u3 = u[1]*u[2] - 8/3 * u[3]
         return [u1 u2 u3]
     end

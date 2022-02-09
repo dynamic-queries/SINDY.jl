@@ -1,66 +1,96 @@
+abstract type AbstractBasis end
+
+struct PolynomialBasis <: AbstractBasis end
+struct TrigBasis <: AbstractBasis end
+struct PolyTrigBasis <: AbstractBasis end
+
 function n2_terms(p::Int)
     return Int(p*(p+1)/2)
 end
 
-function quadratic(X::Array)
-    """
-        Assume data is passed in the form x,y,z
-        Solve this issue for an array of arbitrary size.
-    """
-    s = size(X) # 3,1001
-    p = s[1]
-    s = s[2]
-    n = n2_terms(p) # 6
-    C = []
-    for i=1:p
-        for j=i:p
-            append!(C,X[i,:].*X[j,:])
-        end
-    end
-    reshape(C,(n,s))
+function n3_terms(p::Int)
+    return p*p
 end
 
-function cubic(X::Array)
-    """
-        Assume data is passed in the form x,y,z
-        Solve this issue for an array of arbitrary size.
-    """
-    s = size(X) # 3,1001
-    p = s[1]
-    s = s[2]
-    n = n2_terms(p) # 6
-    C = []
-    for i=1:p
-        for j=i:p
-            for k = j:p
-                append!(C,X[i,:].*X[j,:] .* X[k,:])
-            end
-        end
-    end
-    # return C
-    reshape(C,(10,s))
-end
-
-
-
-
-function linear(X::Array)
-    """
-        Assuming that the data passed is linear.
-    """
+function linear(X::Array,p::Int,n::Int)
     return X
 end
 
-function basis(X)
+
+function quadratic(X::Array,p::Int,n::Int)
+    np = n2_terms(p) # 6
+    C = zeros(np,n)  # 6,3
+    k = 1
+    for i=1:p
+        for j=i:p
+            C[k,:] = X[i,:] .* X[j,:]
+            k += 1
+        end
+    end
+    return C
+end
+
+function cubic(X::Array,p::Int,n::Int)
+    k = 1
+    np = n3_terms(p)
+    C = zeros(np,n)
+    for i = 1:p
+        for j = 1:p
+            C[k,:] = X[i,:].^2 .* X[j,:]
+            k += 1
+        end
+    end
+    return C
+end
+
+function trig(X::Array,p::Int,n::Int)
+    C = zeros(3*p,n)
+    k = 1
+    for i = 1:p
+        C[k,:] .= sin.(X[i,:])
+        k += 1
+    end
+    for i = 1:p
+        C[k,:] .= cos.(X[i,:])
+        k += 1
+    end
+    for i = 1:p
+        C[k,:] .= tan.(X[i,:])
+        k += 1
+    end
+    return C
+end
+
+function basis(X::Array,o::PolynomialBasis)
     s = size(X)
-    ntsteps = s[2]
-    nparams = s[1]
-    # Since we consider unit, linear and quadratic terms.
-    n = 1 + 3 + n2_terms(nparams) + 10 # You are better than this!
+    ntsteps = s[2] #3
+    p = s[1] #2
+    # Since we consider unit, linear and quadratic, cubic terms terms.
+    n = 1 + p + n2_terms(p) + n3_terms(p)
     θ = zeros(n,ntsteps)
     θ[1,:] = ones(ntsteps)
-    θ[2:4,:] = linear(X)
-    θ[5:10,:] = quadratic(X)
-    θ[11:end,:] = cubic(X)
+    k = 1+p
+    l = k+n2_terms(p)
+    m = l+n3_terms(p)
+    θ[2:k,:] = linear(X,p,ntsteps)
+    θ[k+1:l,:] = quadratic(X,p,ntsteps)
+    θ[l+1:m,:] = cubic(X,p,ntsteps)
     return θ
+end
+
+function basis(X::Array,o::TrigBasis)
+    s = size(X)
+    p = s[1]
+    n = s[2]
+    θ = zeros(3*p,n)
+    θ .= trig(X,p,n)
+    return θ
+end
+
+function basis(X::Array,o::PolyTrigBasis)
+    o1 = PolynomialBasis()
+    o2 = TrigBasis()
+    θ1 = basis(X,o1)
+    θ2 = basis(X,o2)
+    return [θ1;θ2]
 end
