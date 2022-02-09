@@ -23,7 +23,7 @@ function quadratic(X::Array,p::Int,n::Int)
     k = 1
     for i=1:p
         for j=i:p
-            C[k,:] = X[i,:] .* X[j,:]
+            C[k,:] .= X[i,:] .* X[j,:]
             k += 1
         end
     end
@@ -36,7 +36,7 @@ function cubic(X::Array,p::Int,n::Int)
     C = zeros(np,n)
     for i = 1:p
         for j = 1:p
-            C[k,:] = X[i,:].^2 .* X[j,:]
+            C[k,:] .= X[i,:].^2 .* X[j,:]
             k += 1
         end
     end
@@ -68,13 +68,13 @@ function basis(X::Array,o::PolynomialBasis)
     # Since we consider unit, linear and quadratic, cubic terms terms.
     n = 1 + p + n2_terms(p) + n3_terms(p)
     θ = zeros(n,ntsteps)
-    θ[1,:] = ones(ntsteps)
+    θ[1,:] .= ones(ntsteps)
     k = 1+p
     l = k+n2_terms(p)
     m = l+n3_terms(p)
-    θ[2:k,:] = linear(X,p,ntsteps)
-    θ[k+1:l,:] = quadratic(X,p,ntsteps)
-    θ[l+1:m,:] = cubic(X,p,ntsteps)
+    θ[2:k,:] .= linear(X,p,ntsteps)
+    θ[k+1:l,:] .= quadratic(X,p,ntsteps)
+    θ[l+1:m,:] .= cubic(X,p,ntsteps)
     return θ
 end
 

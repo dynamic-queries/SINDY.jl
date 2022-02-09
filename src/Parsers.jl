@@ -102,7 +102,9 @@ function datagen(ds::HelicopterData)
     df = CSV.read(ds.filename,DataFrame,delim=",")
     data = Matrix(df)
     data = [data[:,3] data[:,4]]
-    fig = plot(data[1:1000,1],data[1:1000,2],title="Helicopter data")
+    my_cgrad = cgrad([:blue, :green, :red])
+    x = range(0,stop=131,length=size(data,1))
+    fig = plot(data[:,1],data[:,2],lc=my_cgrad,line_z=x,title="Helicopter data")
     display(fig)
     return data
 end

@@ -1,43 +1,33 @@
 using Test
 using LinearAlgebra
 include("../src/NumDiff.jl")
+include("../src/Parsers.jl")
 
-function sample(f,t1::Vector,t2::Vector)
-    Y = t2 * ones(length(t2))'
-    X = t1 * ones(length(t2))'
-    S = f(X,Y)
-    S
-end
+# Lorenz system
+data = datagen(LorenzSystem())
+v_ana = differentiate(data,LorenzSystem(),AnalyticalDeriv())
+v_diff = differentiate(data,FiniteDiff())
+v_vtd = differentiate(data,TotalVariationalDerivativative())
+error_diff = norm(v_ana[:,1:end-1] .- v_diff[:,:])
+error_tvd = norm(v_ana[:,:] .- munge(v_vtd))
 
-@testset "Euler" begin
-    f(x) = sin.(x)
-    df(x) = cos.(x)
-    t = Vector(-pi:0.01:pi)
-    x = f(t)
-    step = 0.01*ones(length(x)-1)
-    v = zeros(length(step))
-    v = gradient!(x,v,step,euler)
-    display(norm(v - df(t)[1:end-1]))
-    @test norm(v - df(t)[1:end-1]) < 1e-1
-    using Plots
-    plot(t,df(t))
-    scatter!(t[1:end-1],v)
-end
 
-@testset "Polynomial" begin
-    # Generate data
-    f(x,y) = sin.(x*y)
-    t1 = -pi:0.01:pi
-    t2 = -pi:0.01:pi
-    S = sample(f,Vector(t1),Vector(t1))
+# Lotka VOlterra
+data = datagen(LotkaVolterra())
+v_ana = differentiate(data,LotkaVolterra(),AnalyticalDeriv())
+v_diff = differentiate(data,FiniteDiff())
+v_vtd = differentiate(data,TotalVariationalDerivativative())
+error_diff = norm(v_ana[:,1:end-1] .- v_diff[:,:])
+error_tvd = norm(v_ana[:,:] .- munge(v_vtd))
 
-    # Define an interpolant : Linear Interpolation is bad. One needs a better way to do this.
-    it = LinearInterpolation((t1,t2),S)
+# Helicopter data
+data = permutedims(datagen(HelicopterData("src/data/heli.csv")))
+t = Vector(0.01:0.01:size(data,2)*0.01)
+v_tvd = munge(differentiate(data,t,TotalVariationalDerivativative()))
 
-    # Check the accuray of interpolation
-    xtest = -pi:1:pi
-    ytest = -pi:1:pi
-    R = sample(f,Vector(xtest),Vector(ytest))
-    @test norm(S - it(t1,t2)) < 1e-10
-    @test norm(R - it(xtest,ytest)) < 1
-end
+
+
+
+
+
+v_diff = differentiate(data,t,FiniteDiff())
