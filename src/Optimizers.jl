@@ -25,6 +25,11 @@ function _optimize(θ::Matrix{T},v::Matrix{T},opt::LSTSQ) where T
     return θ\v
 end
 
+function _optimize(θ::Matrix{T},v::Vector{T},opt::LSTSQ) where T
+    θ = permutedims(θ,(2,1))
+    return θ\v
+end
+
 function _optimize(θ::Matrix{T},v::Vector{Vector{T}},opt::STLSQ) where T
     iter = 0
     abstol = 1e-8
