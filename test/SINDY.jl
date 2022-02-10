@@ -108,4 +108,4 @@ sol = solve(prob,Tsit5(),saveat=t)
 
 fig = plot(sol,vars=(1,2),title="Helicopter model remade")
 display(fig)
-savefig("./figures/Remade_Lotka.svg")
+savefig("./figures/Remade_heli.svg")
