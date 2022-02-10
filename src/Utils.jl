@@ -1,3 +1,5 @@
+include("../src/Library.jl")
+
 function denoise!(sol)
 
 end
@@ -12,9 +14,12 @@ function munge(A::Vector{Vector{Float64}})
     M
 end
 
-function _remake(ξ,ds::LorenzSystem)
+struct LocalBasis <: AbstractBasis
+    polyorder::Int
 
-    function make(du,u,p,t)
+end
 
-    end
+
+function _remake(ξ,type::AbstractBasis)
+
 end

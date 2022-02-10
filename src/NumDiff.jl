@@ -19,6 +19,7 @@ function differentiate(sol,o::TotalVariationalDerivativative)
     elseif length(sol.u[1]) == 2
         fig = plot(w[1,:],w[2,:])
     end
+    display(fig)
     return v
 end
 
