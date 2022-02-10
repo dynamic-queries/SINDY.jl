@@ -7,8 +7,8 @@
 Original Trajectory vs Learned Trajectory
 
 <p float="left">
-  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Traj_Lorenz.svg" width="500" />
-  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Remade_Lorenz.svg" width="500" /> 
+  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Traj_Lorenz.svg" width="350" />
+  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Remade_Lorenz.svg" width="350" /> 
 </p>
 
 
@@ -16,6 +16,6 @@ Original Trajectory vs Learned Trajectory
 Original Trajectory vs Learned Trajectory
 
 <p float="left">
-  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Traj_Lotka.svg" width="500" />
-  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Remade_Lotka.svg" width="500" /> 
+  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Traj_Lotka.svg" width="350" />
+  <img src="https://github.com/dynamic-queries/SINDY.jl/blob/main/figures/Remade_Lotka.svg" width="350" /> 
 </p>
