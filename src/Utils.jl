@@ -32,10 +32,13 @@ function pprint(x::Matrix,btype::AbstractBasis)
     elseif size(x,2) == 2 && typeof(btype) == PolynomialBasis
         labels = ["1","x","y","x²","xy","y²",
                  "x³","x²y","xy²","y³"]
+    elseif size(x,2) == 2 && typeof(btype) == TrigBasis
+        labels = ["sin(x)","sin(y)"
+        ,"cos(x)","cos(y)","tan(x)","tan(y)"]
     end
     df = DataFrame(basis=labels)
     df2 = DataFrame(x,:auto)
-    print(hcat(df,df2))
+    display(hcat(df,df2))
 end
 
 function _remake(ξ::Matrix{T},type::AbstractBasis) where T

@@ -73,3 +73,39 @@ begin
         display(fig)
         savefig("./figures/Remade_Lotka.svg")
 end
+
+# Integration - Helicopter data
+
+data = permutedims(datagen(HelicopterData("./src/data/heli.csv")))
+
+# Denoise data :
+
+#
+
+t = Vector(0.01:0.01:131)
+savefig("./figures/traj_heli.svg")
+v = differentiate(data,t,TotalVariationalDerivativative())
+savefig("./figures/velo_heli.svg")
+b_type = TrigBasis()
+θ = basis(data,b_type)
+LinearAlgebra.cond(θ)
+ξ = _optimize(θ,v,STLSQ(0.001))
+pprint(ξ,b_type)
+
+function helicopter!(du,u,p,t)
+        du[1] = 0.0546156*sin(u[2]) -0.0431238*cos(u[1]) + 0.022303*cos(u[2]) + 0.0176159*tan(u[1])
+        du[2] = 0.819696*sin(u[1]) -0.041357*sin(u[2]) + 0.17279*cos(u[1]) +  0.0282611*cos(u[2]) -0.469918*tan(u[1])
+end
+
+u₀ = [-0.65,0.5]
+p = []
+tspan = (0,131)
+t = 0.01:0.01:131
+prob = ODEProblem(helicopter!,u₀,tspan,p)
+sol = solve(prob,Tsit5(),saveat=t)
+
+# Validate the measurement
+
+fig = plot(sol,vars=(1,2),title="Helicopter model remade")
+display(fig)
+savefig("./figures/Remade_Lotka.svg")
