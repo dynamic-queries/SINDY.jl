@@ -8,9 +8,15 @@ data = datagen(LorenzSystem())
 v_ana = differentiate(data,LorenzSystem(),AnalyticalDeriv())
 v_diff = differentiate(data,FiniteDiff())
 v_vtd = differentiate(data,TotalVariationalDerivativative())
-error_diff = norm(v_ana[:,1:end-1] .- v_diff[:,:])
-error_tvd = norm(v_ana[:,:] .- munge(v_vtd))
-
+error_diff = v_ana[:,1:end-1] .- v_diff[:,:]
+error_tvd = v_ana[:,:] .- munge(v_vtd)
+p_diff = [norm(error_diff[:,i]) for i = 1:size(error_diff,2)]
+p_tvd = [norm(error_tvd[:,i]) for i = 1:size(error_diff,2)]
+using Plots
+plot(p_diff,title="Lorenz - Error Finite Difference ",ylabel="Error")
+savefig("./figures/error_finitediff.png")
+plot(p_tvd,title="Lorenz - Error TVD",ylabel="Error")
+savefig("./figures/error_tvd.png")
 
 # Lotka VOlterra
 data = datagen(LotkaVolterra())
