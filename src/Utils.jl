@@ -38,14 +38,53 @@ function pprint(x::Matrix,btype::AbstractBasis)
     print(hcat(df,df2))
 end
 
-struct LocalBasis <: AbstractBasis
-    polyorder::Int
-    type::AbstractBasis
-
-end
-
-function _remake(ξ,type::AbstractBasis)
-    function f(du,u,p,t)
-
+function _remake(ξ::Matrix{T},type::AbstractBasis) where T
+    if size(ξ,2) == 3
+        if typeof(type)==PolyTrigBasis
+            basis = [(x,y,z)->1,(x,y,z)->x,(x,y,z)->y,(x,y,z)->z,
+                    (x,y,z)->x^2,(x,y,z)->x*y,(x,y,z)->x*z,(x,y,z)->y^2,
+                    (x,y,z)->y*z,(x,y,z)->z^2,(x,y,z)->x^3,(x,y,z)->x^2*y,
+                    (x,y,z)->x^2*z,(x,y,z)->x*y^2,(x,y,z)->y^3,(x,y,z)->y^2*z,
+                    (x,y,z)->x*z^2,(x,y,z)->y*z^2,(x,y,z)->z^3,(x,y,z)->sin(x),(x,y,z)->sin(y),
+                    (x,y,z)->sin(z),(x,y,z)->cos(x),(x,y,z)->cos(y),(x,y,z)->cos(z),(x,y,z)->tan(x),
+                    (x,y,z)->tan(y),(x,y,z)->tan(z)]
+        elseif typeof(type) == PolynomialBasis
+            basis = [(x,y,z)->1,(x,y,z)->x,(x,y,z)->y,(x,y,z)->z,
+                    (x,y,z)->x^2,(x,y,z)->x*y,(x,y,z)->x*z,(x,y,z)->y^2,
+                    (x,y,z)->y*z,(x,y,z)->z^2,(x,y,z)->x^3,(x,y,z)->x^2*y,
+                    (x,y,z)->x^2*z,(x,y,z)->x*y^2,(x,y,z)->y^3,(x,y,z)->y^2*z,
+                    (x,y,z)->x*z^2,(x,y,z)->y*z^2,(x,y,z)->z^3]
+        end
+        @assert size(ξ,1) == length(basis) "Non Equal basis indices"
+        f1 = ξ[1,1]*basis[1]
+        f2 = ξ[1,2]*basis[1]
+        f3 = ξ[i,3]*basis[1]
+        for i = 2:length(basis)
+            f1 += basis[i]*ξ[i,1]
+            f2 += basis[i]*ξ[i,2]
+            f3 += basis[i]*ξ[i,3]
+        end
+        function f(du,u,p,t)
+            du[1] = f1(u[1],u[2],u[3])
+            du[2] = f2(u[1],u[2],u[3])
+            du[3] = f3(u[1],u[2],u[3])
+        end
+        return f
+    elseif size(ξ,2) == 2
+        if typeof(type) == PolyTrigBasis
+            basis = [(x,y,z)->1,(x,y,z)->x,(x,y,z)->y,(x,y,z)->x^2,(x,y,z)->x*y,
+                    (x,y,z)->y^2,(x,y,z)->x^3,(x,y,z)->x^2*y,(x,y,z)->x*y^2,(x,y,z)->y^3,(x,y,z)->sin(x),
+                    (x,y,z)->sin(y),(x,y,z)->cos(x),(x,y,z)->cos(y),(x,y,z)->tan(x),(x,y,z)->tan(y)]
+        elseif typeof(type) == PolynomialBasis
+            basis = [(x,y,z)->1,(x,y,z)->x,(x,y,z)->y,(x,y,z)->x^2,(x,y,z)->x*y,
+                    (x,y,z)->y^2,(x,y,z)->x^3,(x,y,z)->x^2*y,(x,y,z)->x*y^2,(x,y,z)->y^3]
+        end
+        x_basis(x,y,z) = basis(ξ[:,1],x,y,z)
+        y_basis(x,y,z) = basis(ξ[:,2],x,y,z)
+        function f(du,u,p,t)
+            du[1] = f1(u[1],u[2],u[3])
+            du[2] = f2(u[1],u[2],u[3])
+        end
+        return f
     end
 end
